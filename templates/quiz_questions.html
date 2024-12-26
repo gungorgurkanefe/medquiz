@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Sabit Süre Sayacı -->
+<div class="fixed top-4 right-4 z-50 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl shadow-xl p-4 backdrop-blur-sm bg-opacity-90 border border-blue-400">
+    <p class="text-xl font-bold tracking-wide" id="timer">
+        Kalan Süre: 110:00
+    </p>
+</div>
+
+<div class="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12">
+    <div class="flex max-w-[1600px] mx-auto">
+        <!-- Sol Taraf - Sorular -->
+        <div class="flex-1 px-4 sm:px-6 lg:px-8">
+            <!-- Başlık -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">
+                    Deneme Sınavı
+                </h1>
+                <div class="inline-flex items-center px-4 py-2 bg-blue-50 rounded-full">
+                    <p class="text-lg text-blue-700 font-medium">
+                        Toplam Soru: {{ questions|length }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Tüm Sorular -->
+            <div id="questions-container" class="space-y-6">
+                {% for question in questions %}
+                <div id="question-{{ loop.index }}" class="question-card bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 p-8 border border-gray-100">
+                    <div>
+                        <div class="flex items-center mb-4">
+                            <span class="bg-blue-100 text-blue-800 font-semibold px-4 py-1.5 rounded-full text-sm">
+                                Soru {{ loop.index }}
+                            </span>
+                        </div>
+                        <p class="text-gray-800 text-lg leading-relaxed whitespace-pre-wrap">{{ question.question_text }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Sağ Taraf - Optik Form -->
+        <div class="w-80 ml-6 sticky top-0 h-screen overflow-y-auto">
+            <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                <!-- Optik Form Başlık -->
+                <h2 class="text-xl font-bold text-gray-900 mb-6 pb-3 border-b">
+                    Optik Form
+                </h2>
+
+                <!-- Optik Form İçerik -->
+                <div class="space-y-5">
+                    {% for i in range(questions|length) %}
+                    <div class="pb-4 border-b border-gray-100 last:border-0">
+                        <p class="text-sm font-semibold text-gray-700 mb-3 cursor-pointer hover:text-blue-600 transition-colors duration-200 question-link" 
+                           onclick="scrollToQuestion({{ i + 1 }})">
+                            Soru {{ i + 1 }}
+                        </p>
+                        <div class="flex space-x-3">
+                            {% for option in ['A', 'B', 'C', 'D', 'E'] %}
+                            <button class="w-10 h-10 rounded-full border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 optic-button font-medium"
+                                    data-question="{{ i }}"
+                                    data-option="{{ option }}"
+                                    data-correct-answer="{{ questions[i].correct_answer }}">
+                                {{ option }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sınavı Bitir Butonu -->
+    <div class="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-40">
+        <button id="finish-exam" 
+                class="inline-flex items-center px-8 py-4 text-lg font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg hover:shadow-xl transition-all duration-200">
+            Sınavı Bitir ve Sonuçları Gör
+        </button>
+    </div>
+</div>
+
+<script>
+const totalQuestions = {{ questions|length }};
+let answers = new Array(totalQuestions).fill(null);
+let score = 0;
+let examFinished = false;
+
+// Sayaç fonksiyonları
+let timeLeft = 110 * 60; // 110 dakika
+const timerElement = document.getElementById('timer');
+
+function updateTimer() {
+    if (timeLeft <= 0) {
+        finishExam();
+        return;
+    }
+
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    timerElement.textContent = `Kalan Süre: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    timeLeft--;
+}
+
+const timerInterval = setInterval(updateTimer, 1000);
+
+// Optik form işlemleri
+document.querySelectorAll('.optic-button').forEach(button => {
+    button.addEventListener('click', () => {
+        if (examFinished) return;
+
+        const questionIndex = button.dataset.question;
+        const option = button.dataset.option;
+
+        // Optik formda seçili olan butonu güncelle
+        document.querySelectorAll(`[data-question="${questionIndex}"]`).forEach(btn => {
+            btn.classList.remove('bg-blue-500', 'text-white');
+        });
+        button.classList.add('bg-blue-500', 'text-white');
+
+        // Cevabı kaydet
+        answers[questionIndex] = option;
+    });
+});
+
+function checkAnswers() {
+    score = 0;
+    let wrongCount = 0;
+    let emptyCount = 0;
+
+    // Tüm soruları kontrol et
+    for (let i = 0; i < totalQuestions; i++) {
+        if (!answers[i]) {
+            emptyCount++;
+            continue;
+        }
+
+        const button = document.querySelector(`[data-question="${i}"][data-option="${answers[i]}"]`);
+        const correctAnswer = button.dataset.correctAnswer;
+        const isCorrect = answers[i] === correctAnswer;
+        
+        if (isCorrect) {
+            score++;
+            // Optik formda doğru cevabı yeşil yap
+            button.classList.remove('bg-blue-500', 'text-white');
+            button.classList.add('bg-green-500', 'text-white');
+        } else {
+            wrongCount++;
+            // Optik formda yanlış cevabı kırmızı yap
+            button.classList.remove('bg-blue-500', 'text-white');
+            button.classList.add('bg-red-500', 'text-white');
+            // Doğru cevabı yeşil çerçeve ile göster
+            const correctButton = document.querySelector(`[data-question="${i}"][data-option="${correctAnswer}"]`);
+            correctButton.classList.add('border-green-500', 'border-4');
+        }
+    }
+
+    return {
+        score,
+        wrongCount,
+        emptyCount
+    };
+}
+
+function showResults(results) {
+    const percentage = (results.score / totalQuestions) * 100;
+    
+    alert(
+        `Sınav tamamlandı!\n\n` +
+        `Toplam Soru: ${totalQuestions}\n` +
+        `Doğru Sayısı: ${results.score}\n` +
+        `Yanlış Sayısı: ${results.wrongCount}\n` +
+        `Boş Sayısı: ${results.emptyCount}\n` +
+        `Başarı Oranı: ${percentage.toFixed(1)}%`
+    );
+}
+
+function finishExam() {
+    clearInterval(timerInterval);
+    examFinished = true;
+
+    // Optik form butonlarını devre dı��ı bırak
+    document.querySelectorAll('.optic-button').forEach(button => {
+        button.disabled = true;
+        button.classList.add('cursor-not-allowed');
+    });
+
+    const results = checkAnswers();
+    showResults(results);
+}
+
+document.getElementById('finish-exam').addEventListener('click', finishExam);
+
+// Soruya scroll yapma fonksiyonu
+function scrollToQuestion(questionNumber) {
+    const questionElement = document.getElementById(`question-${questionNumber}`);
+    if (questionElement) {
+        // Smooth scroll ile soruya git
+        questionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // Soruyu vurgula
+        questionElement.classList.add('ring-2', 'ring-blue-500');
+        setTimeout(() => {
+            questionElement.classList.remove('ring-2', 'ring-blue-500');
+        }, 2000); // 2 saniye sonra vurguyu kaldır
+    }
+}
+
+// Soru linklerine hover efekti ekle
+document.querySelectorAll('.question-link').forEach(link => {
+    link.addEventListener('mouseenter', () => {
+        link.classList.add('text-blue-600');
+    });
+    link.addEventListener('mouseleave', () => {
+        link.classList.remove('text-blue-600');
+    });
+});
+</script>
+{% endblock %} 

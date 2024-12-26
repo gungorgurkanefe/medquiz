@@ -1,0 +1,524 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-blue-50 to-white py-12">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Başlık -->
+        <div class="text-center mb-12">
+            <h1 class="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+                Soru Yükleme
+            </h1>
+            <p class="mt-4 text-lg text-gray-500">
+                Fotoğrafını çektiğiniz soruları yapay zeka ile anında dijital ortama aktarın.
+            </p>
+        </div>
+
+        <!-- Yükleme Kartı -->
+        <div class="bg-white rounded-lg shadow-xl overflow-hidden">
+            <!-- Hata Mesajı -->
+            <div id="error-message" class="hidden bg-red-50 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800" id="error-text"></h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <!-- Dosya Yükleme Alanı -->
+                <div class="space-y-6">
+                    <div class="w-full">
+                        <form id="uploadForm" method="POST" enctype="multipart/form-data" class="space-y-6">
+                            <!-- Sürükle Bırak Alanı -->
+                            <div class="flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors duration-200 cursor-pointer" 
+                                 onclick="document.getElementById('file-upload').click()">
+                                <div class="space-y-1 text-center">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" 
+                                              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <div class="flex text-sm text-gray-600">
+                                        <label for="file-upload" class="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                                            <span>Dosya Yükle</span>
+                                            <input id="file-upload" name="file" type="file" class="sr-only" accept="image/*" onchange="showPreview(this)" multiple>
+                                        </label>
+                                        <p class="pl-1">veya sürükleyip bırakın</p>
+                                    </div>
+                                    <p class="text-xs text-gray-500">
+                                        PNG, JPG, GIF - maksimum 10MB
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Önizleme Alanı -->
+                            <div id="preview-container" class="hidden">
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    <!-- Önizleme resimleri buraya dinamik olarak eklenecek -->
+                                </div>
+                            </div>
+
+                            <!-- Form Alanları -->
+                            <div class="grid grid-cols-1 gap-6 mt-6">
+                                <div>
+                                    <label for="class_year" class="block text-sm font-medium text-gray-700">Dönem</label>
+                                    <select id="class_year" name="class_year" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md" onchange="updateCommittees()">
+                                        <option value="">Döneminizi seçin</option>
+                                        <option value="1">Dönem 1</option>
+                                        <option value="2">Dönem 2</option>
+                                        <option value="3">Dönem 3</option>
+                                        <option value="4">Dönem 4</option>
+                                        <option value="5">Dönem 5</option>
+                                        <option value="6">Dönem 6</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="committee" class="block text-sm font-medium text-gray-700">Komite</label>
+                                    <select id="committee" name="committee" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md" onchange="updateExams()">
+                                        <option value="">Komitenizi seçin</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="exam_number" class="block text-sm font-medium text-gray-700">Sınav</label>
+                                    <select id="exam_number" name="exam_number" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                                        <option value="">Sınavınızı seçin</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Yükleme Butonu -->
+                            <div class="flex justify-end mt-6">
+                                <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                    </svg>
+                                    Soruları Yükle
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- İpuçları -->
+        <div class="mt-12">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">İpuçları</h2>
+            <div class="bg-white rounded-lg shadow-sm p-6 space-y-4">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <p class="ml-3 text-sm text-gray-500">Sorunun net ve okunaklı bir fotoğrafını çekin.</p>
+                </div>
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <p class="ml-3 text-sm text-gray-500">Fotoğrafta sadece soru ve şıkların olmasına dikkat edin.</p>
+                </div>
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <p class="ml-3 text-sm text-gray-500">Doğru sınıf ve komite bilgilerini girdiğinizden emin olun.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var classCommittees = {{ class_committees|tojson|safe }};
+
+function updateCommittees() {
+    const classYear = document.getElementById('class_year').value;
+    const committeeSelect = document.getElementById('committee');
+    const examSelect = document.getElementById('exam_number');
+    
+    // Komite seçeneklerini temizle
+    committeeSelect.innerHTML = '<option value="">Komitenizi seçin</option>';
+    // Sınav seçeneklerini temizle
+    examSelect.innerHTML = '<option value="">Sınavınızı seçin</option>';
+    
+    if (classYear) {
+        // Seçilen döneme ait komiteleri ekle
+        const committees = classCommittees[classYear];
+        committees.forEach(committee => {
+            const option = document.createElement('option');
+            option.value = committee;
+            option.textContent = `${committee}. Komite`;
+            committeeSelect.appendChild(option);
+        });
+    }
+}
+
+function updateExams() {
+    const examSelect = document.getElementById('exam_number');
+    const committeeValue = document.getElementById('committee').value;
+    
+    // Sınav seçeneklerini temizle
+    examSelect.innerHTML = '<option value="">Sınavınızı seçin</option>';
+    
+    if (committeeValue) {
+        // Akademik yıl seçeneklerini ekle
+        const academicYears = [
+            'Bilinmeyen Yıl',
+            '2024/2025',
+            '2023/2024',
+            '2022/2023',
+            '2021/2022',
+            '2020/2021',
+            '2019/2020',
+            '2018/2019',
+            '2017/2018',
+            '2016/2017',
+            '2015/2016'
+        ];
+        
+        academicYears.forEach((year, index) => {
+            const option = document.createElement('option');
+            option.value = index + 1;  // Değer hala 1'den başlıyor
+            option.textContent = year;  // Görünen metin akademik yıl veya "Bilinmeyen Yıl"
+            examSelect.appendChild(option);
+        });
+    }
+}
+
+function showPreview(input) {
+    const previewContainer = document.getElementById('preview-container');
+    const previewGrid = previewContainer.querySelector('.grid');
+    
+    if (input.files && input.files.length > 0) {
+        previewContainer.classList.remove('hidden');
+        previewGrid.innerHTML = ''; // Önceki önizlemeleri temizle
+        
+        Array.from(input.files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'relative aspect-w-3 aspect-h-2';
+                previewDiv.innerHTML = `
+                    <img src="${e.target.result}" alt="Önizleme ${index + 1}" 
+                         class="object-cover rounded-lg shadow-md w-full h-full">
+                    <button type="button" onclick="removeImage(${index})" 
+                            class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors duration-200">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                `;
+                previewGrid.appendChild(previewDiv);
+            }
+            reader.readAsDataURL(file);
+        });
+    } else {
+        previewContainer.classList.add('hidden');
+        previewGrid.innerHTML = '';
+    }
+}
+
+function removeImage(index) {
+    const input = document.getElementById('file-upload');
+    const dt = new DataTransfer();
+    const { files } = input;
+    
+    for (let i = 0; i < files.length; i++) {
+        if (i !== index) {
+            dt.items.add(files[i]);
+        }
+    }
+    
+    input.files = dt.files;
+    showPreview(input); // Önizlemeyi güncelle
+    
+    if (input.files.length === 0) {
+        document.getElementById('preview-container').classList.add('hidden');
+    }
+}
+
+// Sürükle-bırak işlemleri için event listener'lar
+const dropZone = document.querySelector('.border-dashed');
+
+dropZone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    this.classList.add('border-blue-500', 'bg-blue-50');
+});
+
+dropZone.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    this.classList.remove('border-blue-500', 'bg-blue-50');
+});
+
+dropZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.classList.remove('border-blue-500', 'bg-blue-50');
+    
+    const input = document.getElementById('file-upload');
+    const dt = new DataTransfer();
+    
+    // Mevcut dosyaları koru
+    if (input.files) {
+        Array.from(input.files).forEach(file => dt.items.add(file));
+    }
+    
+    // Yeni dosyaları ekle
+    Array.from(e.dataTransfer.files).forEach(file => {
+        if (file.type.startsWith('image/')) {
+            dt.items.add(file);
+        }
+    });
+    
+    input.files = dt.files;
+    showPreview(input);
+});
+
+// Form gönderimini kontrol et
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const fileInput = document.getElementById('file-upload');
+    const errorMessage = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
+
+    // Dosya seçilip seçilmediğini kontrol et
+    if (!fileInput.files || fileInput.files.length === 0) {
+        errorMessage.classList.remove('hidden');
+        errorText.textContent = 'Lütfen en az bir fotoğraf seçin.';
+        return;
+    }
+
+    // Dosya boyutlarını kontrol et
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    for (let file of fileInput.files) {
+        if (file.size > maxSize) {
+            errorMessage.classList.remove('hidden');
+            errorText.textContent = 'Seçilen dosyalardan biri 10MB\'dan büyük.';
+            return;
+        }
+    }
+
+    // Form verilerini hazırla
+    const formData = new FormData();
+    
+    // Dosyaları ekle
+    Array.from(fileInput.files).forEach((file) => {
+        formData.append('files[]', file);
+    });
+    
+    // Diğer form verilerini ekle
+    formData.append('class_year', document.getElementById('class_year').value);
+    formData.append('committee', document.getElementById('committee').value);
+    formData.append('exam_number', document.getElementById('exam_number').value);
+
+    try {
+        // Yükleme durumunu göster
+        const submitButton = this.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton.innerHTML;
+        submitButton.disabled = true;
+        submitButton.innerHTML = `
+            <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Yükleniyor...
+        `;
+
+        // İsteği gönder
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Bir hata oluştu');
+        }
+
+        // Soruları göster ve doğru şıkları sor
+        if (result.questions && result.questions.length > 0) {
+            // Form alanlarını gizle
+            const uploadForm = document.getElementById('uploadForm');
+            uploadForm.classList.add('hidden');
+
+            // Soru önizleme alanını oluştur
+            const questionsContainer = document.createElement('div');
+            questionsContainer.className = 'space-y-8';
+            questionsContainer.innerHTML = `
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Soruların Doğru Cevaplarını İşaretleyin</h2>
+                <form id="answersForm" class="space-y-8">
+                    ${result.questions.map((question, index) => `
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <!-- Soru Başlığı ve Meta Bilgiler -->
+                            <div class="flex items-center justify-between mb-6">
+                                <div class="flex items-center space-x-2">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                        Dönem ${document.getElementById('class_year').value}
+                                    </span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                        Komite ${document.getElementById('committee').value}
+                                    </span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                                        ${document.getElementById('exam_number').options[document.getElementById('exam_number').selectedIndex].text}
+                                    </span>
+                                </div>
+                                <span class="text-lg font-semibold text-gray-700">
+                                    Soru ${question.question_number || (index + 1)}
+                                </span>
+                            </div>
+
+                            <!-- Soru Metni -->
+                            <div class="prose max-w-none mb-6">
+                                <p class="text-gray-900 text-lg leading-relaxed whitespace-pre-wrap">${question.text}</p>
+                            </div>
+
+                            <!-- Doğru Cevap Seçimi -->
+                            <div class="mb-6">
+                                <label class="block text-lg font-medium text-gray-900 mb-3">Doğru Cevap</label>
+                                <div class="flex flex-wrap gap-4">
+                                    ${['A', 'B', 'C', 'D', 'E'].map(option => `
+                                        <label class="relative flex cursor-pointer items-center rounded-full border-2 p-4 hover:bg-gray-50 hover:border-blue-500 focus:outline-none transition-colors duration-200">
+                                            <input type="radio" name="correct_answer_${index}" value="${option}" required
+                                                   class="h-5 w-5 border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <span class="ml-3 text-base font-medium text-gray-900">${option}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+
+                    <!-- Butonlar -->
+                    <div class="sticky bottom-0 bg-white shadow-lg rounded-lg p-6 mt-8">
+                        <div class="flex justify-between items-center">
+                            <button type="button" onclick="window.location.reload()" 
+                                    class="px-6 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                İptal
+                            </button>
+                            <button type="submit" 
+                                    class="px-8 py-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                Cevapları Kaydet
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            `;
+
+            // Soru önizleme alanını ekle
+            uploadForm.parentNode.appendChild(questionsContainer);
+
+            // Cevapları kaydetme işlemi
+            document.getElementById('answersForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const answers = [];
+                result.questions.forEach((_, index) => {
+                    const answer = document.querySelector(`input[name="correct_answer_${index}"]:checked`);
+                    if (answer) {
+                        answers.push(answer.value);
+                    }
+                });
+
+                try {
+                    const saveResponse = await fetch('/save_answers', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            questions: result.questions,
+                            answers: answers,
+                            class_year: document.getElementById('class_year').value,
+                            committee: document.getElementById('committee').value,
+                            exam_number: document.getElementById('exam_number').value
+                        })
+                    });
+
+                    const saveResult = await saveResponse.json();
+
+                    if (!saveResponse.ok) {
+                        throw new Error(saveResult.error || 'Cevaplar kaydedilirken bir hata oluştu');
+                    }
+
+                    // Başarılı kayıt mesajını göster
+                    const successMessage = document.createElement('div');
+                    successMessage.className = 'fixed bottom-4 right-4 bg-white rounded-lg shadow-xl p-4 max-w-md';
+                    successMessage.innerHTML = `
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-900">${saveResult.message}</p>
+                                ${saveResult.duplicate_questions.length > 0 ? `
+                                    <p class="mt-1 text-sm text-gray-500">
+                                        Atlanan soru numaraları: ${saveResult.duplicate_questions.join(', ')}
+                                    </p>
+                                ` : ''}
+                            </div>
+                            <div class="ml-4 flex-shrink-0 flex">
+                                <button type="button" class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                        onclick="this.parentElement.parentElement.parentElement.remove()">
+                                    <span class="sr-only">Kapat</span>
+                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(successMessage);
+
+                    // 5 saniye sonra mesajı otomatik kaldır
+                    setTimeout(() => {
+                        successMessage.remove();
+                    }, 5000);
+
+                    // Başarılı kayıt sonrası yönlendirme
+                    setTimeout(() => {
+                        window.location.href = '/solve';
+                    }, 2000);
+                } catch (error) {
+                    errorMessage.classList.remove('hidden');
+                    errorText.textContent = error.message;
+                }
+            });
+        } else {
+            throw new Error('Sorular işlenirken bir hata oluştu');
+        }
+    } catch (error) {
+        // Hata durumunda
+        errorMessage.classList.remove('hidden');
+        errorText.textContent = error.message;
+        
+        // Butonu eski haline getir
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
+    }
+});
+
+// Yeni dosya seçildiğinde hata mesajını gizle
+document.getElementById('file-upload').addEventListener('change', function() {
+    document.getElementById('error-message').classList.add('hidden');
+});
+
+// Sürükle-bırak sırasında hata mesajını gizle
+dropZone.addEventListener('drop', function() {
+    document.getElementById('error-message').classList.add('hidden');
+});
+</script>
+{% endblock %} 
