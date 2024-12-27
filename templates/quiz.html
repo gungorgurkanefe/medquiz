@@ -21,7 +21,7 @@
                         <label for="class_year" class="block text-sm font-medium text-gray-700">Dönem</label>
                         <select id="class_year" name="class_year" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="">Döneminizi seçin</option>
-                            {% for year in range(1, 7) %}
+                            {% for year in class_committees.keys()|sort %}
                             <option value="{{ year }}">Dönem {{ year }}</option>
                             {% endfor %}
                         </select>
@@ -66,9 +66,9 @@ function updateCommittees() {
     // Sınav seçeneklerini temizle
     examSelect.innerHTML = '<option value="">Sınavınızı seçin</option>';
     
-    if (classYear) {
+    if (classYear && classCommittees[classYear]) {
         // Seçilen döneme ait komiteleri ekle
-        const committees = classCommittees[classYear];
+        const committees = classCommittees[classYear].committees;
         committees.forEach(committee => {
             const option = document.createElement('option');
             option.value = committee;
@@ -79,14 +79,15 @@ function updateCommittees() {
 }
 
 function updateExams() {
-    const examSelect = document.getElementById('exam_number');
+    const classYear = document.getElementById('class_year').value;
     const committeeValue = document.getElementById('committee').value;
+    const examSelect = document.getElementById('exam_number');
     
     // Sınav seçeneklerini temizle
     examSelect.innerHTML = '<option value="">Sınavınızı seçin</option>';
     
-    if (committeeValue) {
-        // Akademik yıl seçeneklerini ekle
+    if (classYear && committeeValue && classCommittees[classYear].exams[committeeValue]) {
+        const examNumbers = classCommittees[classYear].exams[committeeValue];
         const academicYears = [
             'Bilinmeyen Yıl',
             '2024/2025',
@@ -101,10 +102,10 @@ function updateExams() {
             '2015/2016'
         ];
         
-        academicYears.forEach((year, index) => {
+        examNumbers.forEach(examNumber => {
             const option = document.createElement('option');
-            option.value = index + 1;  // Değer hala 1'den başlıyor
-            option.textContent = year;  // Görünen metin akademik yıl veya "Bilinmeyen Yıl"
+            option.value = examNumber;
+            option.textContent = academicYears[examNumber - 1];
             examSelect.appendChild(option);
         });
     }

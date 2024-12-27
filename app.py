@@ -518,7 +518,7 @@ def save_questions():
                     processed_text = processed_q[0]  # question_text
                     similarity = question_validator.calculate_similarity(processed_text, question_text)
                     
-                    if similarity >= 0.8:  # Benzerlik eşiği
+                    if similarity >= 0.8:  # Benzerlik eşik
                         duplicate_questions.append({
                             'question': question_text,
                             'similar_id': j + 1,  # Yeni sorulardaki indeks
@@ -602,12 +602,34 @@ def check_answer():
 
 @app.route('/solve')
 def solve():
-    # Sınıf ve komite bilgilerini hazırla
-    class_committees = {
-        1: list(range(1, 6)),  # 1. sınıf: 5 komite
-        2: list(range(1, 6)),  # 2. sınıf: 5 komite
-        3: list(range(1, 7))   # 3. sınıf: 6 komite
-    }
+    # Veritabanından tüm soruları al ve kategorilere göre grupla
+    questions = Question.query.with_entities(
+        Question.class_year,
+        Question.committee,
+        Question.exam_number,
+        func.count().label('count')
+    ).group_by(
+        Question.class_year,
+        Question.committee,
+        Question.exam_number
+    ).all()
+    
+    # Soru içeren kategorileri sakla
+    active_categories = {}
+    for q in questions:
+        if q.class_year not in active_categories:
+            active_categories[q.class_year] = {}
+        if q.committee not in active_categories[q.class_year]:
+            active_categories[q.class_year][q.committee] = []
+        active_categories[q.class_year][q.committee].append(q.exam_number)
+    
+    # Sınıf ve komite bilgilerini hazırla (sadece aktif olanlar)
+    class_committees = {}
+    for class_year, committees in active_categories.items():
+        class_committees[class_year] = {
+            'committees': sorted(list(committees.keys())),  # Aktif komiteler
+            'exams': {committee: sorted(exams) for committee, exams in committees.items()}  # Her komite için aktif sınavlar
+        }
     
     return render_template('solve.html', class_committees=class_committees)
 
@@ -692,15 +714,35 @@ def save_answers():
 
 @app.route('/quiz')
 def quiz():
-    # Her dönem için komite sayılarını içeren sözlük
-    class_committees = {
-        '1': list(range(1, 7)),  # 1. dönem için 6 komite
-        '2': list(range(1, 7)),  # 2. dönem için 6 komite
-        '3': list(range(1, 7)),  # 3. dönem için 6 komite
-        '4': list(range(1, 7)),  # 4. dönem için 6 komite
-        '5': list(range(1, 7)),  # 5. dönem için 6 komite
-        '6': list(range(1, 7))   # 6. dönem için 6 komite
-    }
+    # Veritabanından tüm soruları al ve kategorilere göre grupla
+    questions = Question.query.with_entities(
+        Question.class_year,
+        Question.committee,
+        Question.exam_number,
+        func.count().label('count')
+    ).group_by(
+        Question.class_year,
+        Question.committee,
+        Question.exam_number
+    ).all()
+    
+    # Soru içeren kategorileri sakla
+    active_categories = {}
+    for q in questions:
+        if q.class_year not in active_categories:
+            active_categories[q.class_year] = {}
+        if q.committee not in active_categories[q.class_year]:
+            active_categories[q.class_year][q.committee] = []
+        active_categories[q.class_year][q.committee].append(q.exam_number)
+    
+    # Sınıf ve komite bilgilerini hazırla (sadece aktif olanlar)
+    class_committees = {}
+    for class_year, committees in active_categories.items():
+        class_committees[class_year] = {
+            'committees': sorted(list(committees.keys())),  # Aktif komiteler
+            'exams': {committee: sorted(exams) for committee, exams in committees.items()}  # Her komite için aktif sınavlar
+        }
+    
     return render_template('quiz.html', class_committees=class_committees)
 
 @app.route('/start_quiz')
@@ -723,6 +765,30 @@ def start_quiz():
         return redirect(url_for('quiz'))
     
     return render_template('quiz_questions.html', questions=questions)
+
+@app.route('/search')
+def search():
+    query = request.args.get('q', '')
+    if not query or len(query) < 3:
+        flash('Lütfen en az 3 karakter içeren bir arama terimi girin.', 'warning')
+        return redirect(request.referrer or url_for('index'))
+    
+    # Arama sorgusunu hazırla (büyük-küçük harf duyarsız)
+    search_term = f"%{query}%"
+    
+    # Veritabanında ara
+    questions = Question.query.filter(
+        Question.question_text.ilike(search_term)
+    ).order_by(
+        Question.class_year,
+        Question.committee,
+        Question.exam_number,
+        Question.question_number
+    ).all()
+    
+    return render_template('search_results.html', 
+                         questions=questions,
+                         query=query)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=1881) 
