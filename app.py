@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, g
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, g, session
 from flask_sqlalchemy import SQLAlchemy
 import google.generativeai as genai
 from pathlib import Path
@@ -12,6 +12,18 @@ from werkzeug.utils import secure_filename
 from question_validator import QuestionValidator
 from flashcard import flashcard_bp
 from sqlalchemy.sql import func
+from werkzeug.security import generate_password_hash, check_password_hash
+from database.supabase import get_user_by_email, create_user, verify_user
+from functools import wraps
+from database.user_stats import (
+    get_user_statistics,
+    get_last_30_days_stats,
+    get_weekly_study_time,
+    calculate_success_rate,
+    update_solved_question,
+    update_uploaded_question,
+    update_study_time
+)
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # Flash mesajları için gerekli
@@ -557,6 +569,11 @@ def save_questions():
         conn.commit()
         conn.close()
 
+        # İstatistikleri güncelle
+        if g.user:
+            for _ in range(saved_count):
+                update_uploaded_question(g.user['id'])
+        
         # Sonuç mesajını hazırla
         message = f'{saved_count} yeni soru kaydedildi.'
         if duplicate_questions:
@@ -582,13 +599,17 @@ def check_answer():
         if not question_id or not selected_answer:
             return jsonify({'error': 'Missing question_id or answer'}), 400
             
-        # Soruyu veritabanından al
         question = Question.query.get(question_id)
         
         if not question:
             return jsonify({'error': 'Question not found'}), 404
             
         is_correct = selected_answer.upper() == question.correct_answer.upper()
+        
+        # İstatistikleri güncelle
+        if g.user:
+            update_solved_question(g.user['id'], is_correct)
+            update_study_time(g.user['id'], 1)  # Her soru için 1 dakika
         
         return jsonify({
             'success': True,
@@ -822,6 +843,137 @@ def flashcards():
         }
     
     return render_template('flashcards.html', class_committees=class_committees)
+
+# Auth routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    # Kullanıcı zaten giriş yapmışsa ana sayfaya yönlendir
+    if g.user:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        # Form validasyonu
+        if not all([email, password]):
+            flash('Lütfen email ve şifrenizi girin!', 'error')
+            return redirect(url_for('login'))
+        
+        try:
+            user = verify_user(email, password)
+            if user:
+                session['user_id'] = user['id']
+                session['user_email'] = user['email']
+                session['user_name'] = user['name']
+                flash(f'Hoş geldiniz, {user["name"]}!', 'success')
+                return redirect(url_for('index'))
+            else:
+                flash('Hatalı email veya şifre!', 'error')
+                return redirect(url_for('login'))
+        except Exception as e:
+            print(f"Giriş hatası: {str(e)}")
+            flash('Giriş yapılırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.', 'error')
+            return redirect(url_for('login'))
+    
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    # Kullanıcı zaten giriş yapmışsa ana sayfaya yönlendir
+    if g.user:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        password_confirm = request.form.get('password_confirm')
+        
+        # Form validasyonları
+        if not all([name, email, password, password_confirm]):
+            flash('Lütfen tüm alanları doldurun!', 'error')
+            return redirect(url_for('register'))
+            
+        if password != password_confirm:
+            flash('Şifreler eşleşmiyor!', 'error')
+            return redirect(url_for('register'))
+            
+        if len(password) < 6:
+            flash('Şifre en az 6 karakter olmalıdır!', 'error')
+            return redirect(url_for('register'))
+        
+        existing_user = get_user_by_email(email)
+        if existing_user:
+            flash('Bu email adresi zaten kullanımda!', 'error')
+            return redirect(url_for('register'))
+        
+        try:
+            # Kullanıcı oluşturma
+            user = create_user(email, password, name)
+            
+            if user:
+                flash('Hesabınız başarıyla oluşturuldu! Şimdi giriş yapabilirsiniz.', 'success')
+                return redirect(url_for('login'))
+            else:
+                flash('Hesap oluşturulurken bir hata oluştu. L��tfen tekrar deneyin.', 'error')
+                return redirect(url_for('register'))
+                
+        except Exception as e:
+            print(f"Kayıt hatası: {str(e)}")
+            flash('Hesap oluşturulurken bir hata oluştu. Lütfen daha sonra tekrar deneyin.', 'error')
+            return redirect(url_for('register'))
+    
+    return render_template('register.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Başarıyla çıkış yaptınız!', 'success')
+    return redirect(url_for('index'))
+
+# Auth middleware
+@app.before_request
+def load_user():
+    user_id = session.get('user_id')
+    if user_id:
+        g.user = {
+            'id': session.get('user_id'),
+            'email': session.get('user_email'),
+            'name': session.get('user_name')
+        }
+    else:
+        g.user = None
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if g.user is None:
+            flash('Bu sayfayı görüntülemek için giriş yapmalısınız!', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/profile')
+@login_required
+def profile():
+    user_id = g.user['id']
+    
+    # Temel istatistikleri al
+    stats = get_user_statistics(user_id)
+    last_30_days = get_last_30_days_stats(user_id)
+    weekly_study = get_weekly_study_time(user_id)
+    success_rate = calculate_success_rate(user_id)
+    
+    # Son aktiviteleri al (son 5 aktivite)
+    activities = []  # Burada aktivite verilerini çekeceğiz
+    
+    return render_template('profile.html',
+                         stats=stats,
+                         last_30_days=last_30_days,
+                         weekly_study=weekly_study,
+                         success_rate=success_rate,
+                         activities=activities)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=1881) 
