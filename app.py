@@ -790,5 +790,38 @@ def search():
                          questions=questions,
                          query=query)
 
+@app.route('/flashcards')
+def flashcards():
+    # Veritabanından tüm soruları al ve kategorilere göre grupla
+    questions = Question.query.with_entities(
+        Question.class_year,
+        Question.committee,
+        Question.exam_number,
+        func.count().label('count')
+    ).group_by(
+        Question.class_year,
+        Question.committee,
+        Question.exam_number
+    ).all()
+    
+    # Soru içeren kategorileri sakla
+    active_categories = {}
+    for q in questions:
+        if q.class_year not in active_categories:
+            active_categories[q.class_year] = {}
+        if q.committee not in active_categories[q.class_year]:
+            active_categories[q.class_year][q.committee] = []
+        active_categories[q.class_year][q.committee].append(q.exam_number)
+    
+    # Sınıf ve komite bilgilerini hazırla (sadece aktif olanlar)
+    class_committees = {}
+    for class_year, committees in active_categories.items():
+        class_committees[class_year] = {
+            'committees': sorted(list(committees.keys())),  # Aktif komiteler
+            'exams': {committee: sorted(exams) for committee, exams in committees.items()}  # Her komite için aktif sınavlar
+        }
+    
+    return render_template('flashcards.html', class_committees=class_committees)
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=1881) 

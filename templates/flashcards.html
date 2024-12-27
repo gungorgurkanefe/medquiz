@@ -1,447 +1,105 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
-    <div class="max-w-7xl mx-auto">
-        <!-- Başlık ve Açıklama -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900 mb-4">Flashcards</h1>
-            <p class="text-lg text-gray-600 max-w-2xl mx-auto">
-                Soruları flashcard formatında çözerek öğrenmenizi pekiştirin. Her soruyu dikkatle okuyun ve cevabınızı seçin.
-            </p>
+<div class="min-h-screen bg-gradient-to-b from-blue-50 to-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-8">
+                Flashcards
+            </h1>
         </div>
 
-        <!-- İstatistikler -->
-        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="stat-card p-4 bg-blue-50 rounded-lg">
-                    <h3 class="text-lg font-semibold text-blue-800">Toplam Soru</h3>
-                    <p class="text-3xl font-bold text-blue-600" id="totalQuestions">{{ questions|length }}</p>
-                </div>
-                <div class="stat-card p-4 bg-green-50 rounded-lg">
-                    <h3 class="text-lg font-semibold text-green-800">Doğru</h3>
-                    <p class="text-3xl font-bold text-green-600" id="correctAnswers">0</p>
-                </div>
-                <div class="stat-card p-4 bg-red-50 rounded-lg">
-                    <h3 class="text-lg font-semibold text-red-800">Yanlış</h3>
-                    <p class="text-3xl font-bold text-red-600" id="wrongAnswers">0</p>
-                </div>
-                <div class="stat-card p-4 bg-purple-50 rounded-lg">
-                    <h3 class="text-lg font-semibold text-purple-800">Başarı Oranı</h3>
-                    <p class="text-3xl font-bold text-purple-600" id="successRate">0%</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filtreler -->
-        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Sınıf Seçimi -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <form id="flashcardForm" class="space-y-6">
                 <div>
-                    <label for="class_year" class="block text-sm font-medium text-gray-700 mb-2">Sınıf</label>
-                    <select id="class_year" name="class_year"
-                            class="block w-full px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                            onchange="updateCommittees()">
-                        <option value="">Tüm Sınıflar</option>
-                        <option value="1">1. Sınıf</option>
-                        <option value="2">2. Sınıf</option>
-                        <option value="3">3. Sınıf</option>
+                    <label for="class_year" class="block text-sm font-medium text-gray-700">Sınıf</label>
+                    <select id="class_year" name="class_year" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md" onchange="updateCommittees()">
+                        <option value="">Sınıf Seçin</option>
+                        {% for class_year in class_committees.keys()|sort %}
+                            <option value="{{ class_year }}">{{ class_year }}. Sınıf</option>
+                        {% endfor %}
                     </select>
                 </div>
 
-                <!-- Komite Seçimi -->
                 <div>
-                    <label for="committee" class="block text-sm font-medium text-gray-700 mb-2">Komite</label>
-                    <select id="committee" name="committee"
-                            class="block w-full px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                            onchange="updateExams()">
-                        <option value="">Tüm Komiteler</option>
+                    <label for="committee" class="block text-sm font-medium text-gray-700">Komite</label>
+                    <select id="committee" name="committee" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md" onchange="updateExams()">
+                        <option value="">Önce Sınıf Seçin</option>
                     </select>
                 </div>
 
-                <!-- Sınav Seçimi -->
                 <div>
-                    <label for="exam_number" class="block text-sm font-medium text-gray-700 mb-2">Sınav</label>
-                    <select id="exam_number" name="exam_number"
-                            class="block w-full px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200">
-                        <option value="">Tüm Sınavlar</option>
+                    <label for="exam_number" class="block text-sm font-medium text-gray-700">Sınav</label>
+                    <select id="exam_number" name="exam_number" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                        <option value="">Önce Komite Seçin</option>
                     </select>
                 </div>
-            </div>
 
-            <!-- Filtre Butonu -->
-            <div class="mt-6">
-                <button onclick="applyFilters()" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 flex items-center justify-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                    </svg>
-                    Filtreleri Uygula
-                </button>
-            </div>
-        </div>
-
-        <!-- Flashcard Alanı -->
-        {% if questions %}
-        <div class="flashcard-container">
-            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                <!-- İlerleme Çubuğu -->
-                <div class="w-full bg-gray-200 h-2">
-                    <div id="progressBar" class="h-2 bg-blue-600 transition-all duration-300" style="width: 0%"></div>
+                <div class="flex justify-center">
+                    <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Başla
+                    </button>
                 </div>
-
-                <!-- Soru Bilgileri -->
-                <div class="p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="text-sm text-gray-600">Soru <span id="currentQuestionNumber">1</span>/<span id="totalQuestionCount">{{ questions|length }}</span></span>
-                        <span class="text-sm text-blue-600 font-medium" id="questionInfo"></span>
-                    </div>
-
-                    <!-- Soru Metni -->
-                    <div id="questionText" class="text-lg text-gray-900 mb-6 leading-relaxed"></div>
-
-                    <!-- Şıklar -->
-                    <div id="options" class="space-y-3"></div>
-
-                    <!-- Sonuç Mesajı -->
-                    <div id="resultMessage" class="mt-6 hidden"></div>
-
-                    <!-- Navigasyon Butonları -->
-                    <div class="flex justify-between items-center mt-8">
-                        <button onclick="previousQuestion()" id="prevButton" class="flex items-center px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                            </svg>
-                            Önceki Soru
-                        </button>
-                        <button onclick="nextQuestion()" id="nextButton" class="flex items-center px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Sonraki Soru
-                            <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
+            </form>
         </div>
-        {% else %}
-        <!-- Soru Bulunamadı -->
-        <div class="text-center py-12 bg-white rounded-xl shadow-lg">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <h3 class="mt-2 text-lg font-medium text-gray-900">Soru Bulunamadı</h3>
-            <p class="mt-1 text-gray-500">Seçilen kriterlere uygun soru bulunmamaktadır.</p>
-            <div class="mt-6">
-                <a href="/flashcards" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
-                    Filtreleri Temizle
-                </a>
-            </div>
-        </div>
-        {% endif %}
     </div>
 </div>
 
 <script>
-const questions = {{ questions|tojson }};
 const classCommittees = {{ class_committees|tojson }};
-let currentQuestionIndex = 0;
-let stats = {
-    correct: 0,
-    wrong: 0,
-    answered: new Set()
-};
-
-// Sayfa yüklendiğinde
-document.addEventListener('DOMContentLoaded', function() {
-    if (questions.length > 0) {
-        showQuestion(0);
-        updateStats();
-        updateFiltersFromUrl();
-    }
-});
-
-function showQuestion(index) {
-    if (index < 0 || index >= questions.length) return;
-    
-    const question = questions[index];
-    currentQuestionIndex = index;
-    
-    // İlerleme çubuğunu güncelle
-    document.getElementById('progressBar').style.width = `${((index + 1) / questions.length) * 100}%`;
-    document.getElementById('currentQuestionNumber').textContent = index + 1;
-    document.getElementById('questionInfo').textContent = 
-        `${question.class_year}. Sınıf - ${question.committee}. Komite - Sınav ${question.exam_number}`;
-    
-    // Soru metnini göster
-    document.getElementById('questionText').innerHTML = `
-        <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm font-medium mb-2">
-            Soru ${question.question_number}
-        </span>
-        <p>${question.question_text}</p>
-    `;
-    
-    // Şıkları göster
-    const optionsContainer = document.getElementById('options');
-    optionsContainer.innerHTML = '';
-    const options = [
-        {letter: 'A', text: question.option_a},
-        {letter: 'B', text: question.option_b},
-        {letter: 'C', text: question.option_c},
-        {letter: 'D', text: question.option_d},
-        {letter: 'E', text: question.option_e}
-    ];
-    
-    options.forEach(option => {
-        const optionDiv = document.createElement('div');
-        optionDiv.className = 'option transform transition-all duration-200 hover:scale-[1.01]';
-        optionDiv.innerHTML = `
-            <label class="flex items-center p-4 bg-white rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors duration-200">
-                <input type="radio" name="answer" value="${option.letter}" 
-                       class="form-radio h-4 w-4 text-blue-600 transition duration-150 ease-in-out" 
-                       onchange="checkAnswer(this.value)">
-                <span class="ml-3">${option.letter}) ${option.text}</span>
-            </label>
-        `;
-        optionsContainer.appendChild(optionDiv);
-    });
-    
-    // Sonuç mesajını gizle
-    document.getElementById('resultMessage').classList.add('hidden');
-    
-    // Navigasyon butonlarını güncelle
-    document.getElementById('prevButton').disabled = index === 0;
-    document.getElementById('nextButton').disabled = index === questions.length - 1;
-    
-    // Eğer soru daha önce cevaplanmışsa, cevabı göster
-    if (stats.answered.has(question.id)) {
-        const options = document.querySelectorAll('.option');
-        options.forEach(option => {
-            const radio = option.querySelector('input[type="radio"]');
-            const label = option.querySelector('label');
-            radio.disabled = true;
-            
-            if (radio.value === question.correct_answer) {
-                label.classList.add('bg-green-50', 'border-green-200');
-                option.querySelector('span').classList.add('text-green-700');
-            }
-        });
-    }
-}
-
-async function checkAnswer(selectedAnswer) {
-    const currentQuestion = questions[currentQuestionIndex];
-    
-    try {
-        const response = await fetch('/check_flashcard_answer', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                question_id: currentQuestion.id,
-                answer: selectedAnswer
-            })
-        });
-        
-        const data = await response.json();
-        const resultMessage = document.getElementById('resultMessage');
-        
-        if (data.is_correct) {
-            resultMessage.innerHTML = `
-                <div class="flex items-center p-4 bg-green-50 rounded-lg border border-green-200">
-                    <svg class="h-6 w-6 text-green-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span class="text-green-700 font-medium">Harika! Doğru cevap! 🎉</span>
-                </div>
-            `;
-            if (!stats.answered.has(currentQuestion.id)) {
-                stats.correct++;
-                stats.answered.add(currentQuestion.id);
-            }
-        } else {
-            resultMessage.innerHTML = `
-                <div class="flex items-center p-4 bg-red-50 rounded-lg border border-red-200">
-                    <svg class="h-6 w-6 text-red-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span class="text-red-700 font-medium">Yanlış cevap. Tekrar deneyin! 💪</span>
-                </div>
-            `;
-            if (!stats.answered.has(currentQuestion.id)) {
-                stats.wrong++;
-                stats.answered.add(currentQuestion.id);
-            }
-        }
-        
-        resultMessage.classList.remove('hidden');
-        updateStats();
-        
-        // Şıkları devre dışı bırak ve doğru cevabı göster
-        const options = document.querySelectorAll('.option');
-        options.forEach(option => {
-            const radio = option.querySelector('input[type="radio"]');
-            const label = option.querySelector('label');
-            radio.disabled = true;
-            
-            if (radio.value === currentQuestion.correct_answer) {
-                label.classList.add('bg-green-50', 'border-green-200');
-                option.querySelector('span').classList.add('text-green-700');
-            } else if (radio.value === selectedAnswer && !data.is_correct) {
-                label.classList.add('bg-red-50', 'border-red-200');
-                option.querySelector('span').classList.add('text-red-700');
-            }
-        });
-        
-    } catch (error) {
-        console.error('Cevap kontrolü hatası:', error);
-        showNotification('Cevap kontrolü sırasında bir hata oluştu.', 'error');
-    }
-}
-
-function updateStats() {
-    document.getElementById('correctAnswers').textContent = stats.correct;
-    document.getElementById('wrongAnswers').textContent = stats.wrong;
-    const total = stats.correct + stats.wrong;
-    const rate = total > 0 ? Math.round((stats.correct / total) * 100) : 0;
-    document.getElementById('successRate').textContent = `${rate}%`;
-}
-
-function nextQuestion() {
-    if (currentQuestionIndex < questions.length - 1) {
-        showQuestion(currentQuestionIndex + 1);
-    }
-}
-
-function previousQuestion() {
-    if (currentQuestionIndex > 0) {
-        showQuestion(currentQuestionIndex - 1);
-    }
-}
 
 function updateCommittees() {
     const classYear = document.getElementById('class_year').value;
     const committeeSelect = document.getElementById('committee');
     const examSelect = document.getElementById('exam_number');
     
-    // Komite seçeneklerini temizle
-    committeeSelect.innerHTML = '<option value="">Tüm Komiteler</option>';
-    // Sınav seçeneklerini temizle
-    examSelect.innerHTML = '<option value="">Tüm Sınavlar</option>';
+    // Komite seçimini sıfırla
+    committeeSelect.innerHTML = '<option value="">Komite Seçin</option>';
+    examSelect.innerHTML = '<option value="">Önce Komite Seçin</option>';
     
-    if (classYear) {
-        // Seçilen sınıfa ait komiteleri ekle
-        const committees = classCommittees[classYear];
+    if (classYear && classCommittees[classYear]) {
+        const committees = classCommittees[classYear].committees;
         committees.forEach(committee => {
             const option = document.createElement('option');
             option.value = committee;
-            option.textContent = `${committee}. Komite`;
+            option.textContent = `Komite ${committee}`;
             committeeSelect.appendChild(option);
         });
     }
 }
 
 function updateExams() {
+    const classYear = document.getElementById('class_year').value;
+    const committee = document.getElementById('committee').value;
     const examSelect = document.getElementById('exam_number');
-    const committeeValue = document.getElementById('committee').value;
     
-    // Sınav seçeneklerini temizle
-    examSelect.innerHTML = '<option value="">Tüm Sınavlar</option>';
+    // Sınav seçimini sıfırla
+    examSelect.innerHTML = '<option value="">Sınav Seçin</option>';
     
-    if (committeeValue) {
-        // Akademik yıl seçeneklerini ekle
-        const academicYears = [
-            '2024/2025',
-            '2023/2024',
-            '2022/2023',
-            '2021/2022',
-            '2020/2021',
-            '2019/2020',
-            '2018/2019',
-            '2017/2018',
-            '2016/2017',
-            '2015/2016',
-            'Bilinmeyen Yıl'
-        ];
-        
-        academicYears.forEach((year, index) => {
+    if (classYear && committee && classCommittees[classYear] && classCommittees[classYear].exams[committee]) {
+        const exams = classCommittees[classYear].exams[committee];
+        exams.forEach(exam => {
             const option = document.createElement('option');
-            option.value = index + 1;
-            option.textContent = year;
+            option.value = exam;
+            option.textContent = exam === 1 ? 'Bilinmeyen Yıl' : 
+                               ['', '', '2024/2025', '2023/2024', '2022/2023', '2021/2022', '2020/2021', '2019/2020', '2018/2019', '2017/2018', '2016/2017', '2015/2016'][exam];
             examSelect.appendChild(option);
         });
     }
 }
 
-function applyFilters() {
+document.getElementById('flashcardForm').addEventListener('submit', function(e) {
+    e.preventDefault();
     const classYear = document.getElementById('class_year').value;
     const committee = document.getElementById('committee').value;
     const examNumber = document.getElementById('exam_number').value;
     
-    let url = '/flashcards?';
-    const params = [];
-    
-    if (classYear) params.push(`class_year=${classYear}`);
-    if (committee) params.push(`committee=${committee}`);
-    if (examNumber) params.push(`exam_number=${examNumber}`);
-    
-    url += params.join('&');
-    window.location.href = url;
-}
-
-function updateFiltersFromUrl() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const classYear = urlParams.get('class_year');
-    const committee = urlParams.get('committee');
-    const examNumber = urlParams.get('exam_number');
-    
-    if (classYear) {
-        document.getElementById('class_year').value = classYear;
-        updateCommittees();
-        
-        if (committee) {
-            document.getElementById('committee').value = committee;
-            updateExams();
-            
-            if (examNumber) {
-                document.getElementById('exam_number').value = examNumber;
-            }
-        }
+    if (!classYear || !committee || !examNumber) {
+        alert('Lütfen tüm alanları doldurun.');
+        return;
     }
-}
-
-// Klavye kısayolları
-document.addEventListener('keydown', function(e) {
-    if (e.target.tagName === 'INPUT') return; // Input alanlarında çalışmasın
     
-    switch(e.key) {
-        case 'ArrowLeft':
-            previousQuestion();
-            break;
-        case 'ArrowRight':
-            nextQuestion();
-            break;
-        case 'a':
-        case 'A':
-            document.querySelector('input[value="A"]')?.click();
-            break;
-        case 'b':
-        case 'B':
-            document.querySelector('input[value="B"]')?.click();
-            break;
-        case 'c':
-        case 'C':
-            document.querySelector('input[value="C"]')?.click();
-            break;
-        case 'd':
-        case 'D':
-            document.querySelector('input[value="D"]')?.click();
-            break;
-        case 'e':
-        case 'E':
-            document.querySelector('input[value="E"]')?.click();
-            break;
-    }
+    window.location.href = `/flashcards?class_year=${classYear}&committee=${committee}&exam_number=${examNumber}`;
 });
 </script>
 {% endblock %} 
